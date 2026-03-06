@@ -39,10 +39,3 @@ changelog:
       - "^test:"
       - "^chore:"
 
-brews:
-  - repository:
-      owner: mrgoonie
-      name: homebrew-tap
-    homepage: "https://github.com/mrgoonie/fbcli"
-    description: "Facebook Page CLI - post and manage your Facebook Page from the terminal"
-    license: "MIT"
