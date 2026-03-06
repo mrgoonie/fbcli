@@ -1,0 +1,34 @@
+{
+  "name": "@mrgoonie/fbcli",
+  "version": "0.0.0",
+  "description": "Facebook Page CLI - post and manage your Facebook Page from the terminal",
+  "bin": {
+    "fbcli": "bin/fbcli"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "keywords": [
+    "facebook",
+    "cli",
+    "facebook-page",
+    "social-media",
+    "graph-api"
+  ],
+  "author": "mrgoonie",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrgoonie/fbcli"
+  },
+  "homepage": "https://github.com/mrgoonie/fbcli",
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
