@@ -35,11 +35,12 @@ internal/
 
 ## Authentication Flow
 1. `fbcli auth login` → prompts for App ID/Secret (first time)
-2. Opens browser → Facebook OAuth dialog
-3. Local HTTP server receives callback on :8910
-4. Exchange code → short-lived token → long-lived token
-5. GET /me/accounts → page access tokens
-6. Store selected page token in ~/.fbcli/tokens.yaml
+2. Generate CSRF state parameter for OAuth security
+3. Opens browser → Facebook OAuth dialog
+4. Local HTTP server receives callback on 127.0.0.1:8910 (secure localhost binding)
+5. Verify CSRF state parameter, then exchange code via POST (secrets in body, not URL)
+6. GET /me/accounts → page access tokens
+7. Store selected page token in ~/.fbcli/tokens.yaml
 
 ## Token Resolution Priority
 1. `FBCLI_PAGE_TOKEN` env var (CI/CD)

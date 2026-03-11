@@ -1,7 +1,7 @@
 # Code Standards
 
 ## Language
-- Go 1.22+
+- Go 1.24+
 - Module path: `github.com/mrgoonie/fbcli`
 
 ## Naming
@@ -24,12 +24,16 @@
 - Wrap errors with context: `fmt.Errorf("context: %w", err)`
 - APIError type with Facebook error codes + user hints
 - Never expose tokens in error messages
+- Use `getString()` helper for safe API response parsing (guards against type assertion panics)
 
 ## Security
-- Token files: `0600` permissions
-- Config dir: `0700` permissions
-- No secrets in logs (unless --verbose, and even then masked)
-- Env var override for CI/CD (FBCLI_PAGE_TOKEN)
+- **OAuth:** CSRF state parameter required (`GenerateState()`)
+- **Token exchange:** POST method (secrets in body, not URL query)
+- **HTTP reads:** All responses limited to 1MB with `io.LimitReader`
+- **Token files:** `0600` permissions
+- **Config dir:** `0700` permissions
+- **Verbose logging:** Redacts `access_token`, `client_secret` params, shows `OK` instead of raw responses
+- **Env var override:** FBCLI_PAGE_TOKEN for CI/CD
 
 ## Testing
 - Use `t.TempDir()` for file tests

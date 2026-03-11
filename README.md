@@ -6,12 +6,6 @@ Inspired by [xurl](https://github.com/xdevplatform/xurl).
 
 ## Install
 
-### Homebrew (macOS/Linux)
-
-```bash
-brew install mrgoonie/tap/fbcli
-```
-
 ### Go
 
 ```bash
@@ -139,7 +133,7 @@ export FBCLI_APP_SECRET="your-app-secret"
 | Flag | Description |
 |------|-------------|
 | `--json` | Output as JSON |
-| `-V, --verbose` | Show API request/response details |
+| `-V, --verbose` | Show API request/response details (sensitive data redacted) |
 | `--page` | Override default page ID |
 | `-v, --version` | Show version |
 

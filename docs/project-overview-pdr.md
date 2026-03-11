@@ -19,7 +19,7 @@ No actively maintained Facebook CLI tool exists. Previous tools (fbcmd, facebook
 - Environment variable support for CI/CD
 
 ## Tech Stack
-- Go 1.22+ with Cobra CLI framework
+- Go 1.24+ with Cobra CLI framework
 - huandu/facebook/v2 SDK
 - Facebook Graph API v24.0
 - GoReleaser for distribution
