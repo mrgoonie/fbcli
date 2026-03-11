@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mrgoonie/fbcli/internal/config"
@@ -21,7 +22,7 @@ type TokenStore struct {
 
 // TokensFilePath returns the tokens file path
 func TokensFilePath() string {
-	return config.Dir() + "/tokens.yaml"
+	return filepath.Join(config.Dir(), "tokens.yaml")
 }
 
 // Load reads tokens from disk

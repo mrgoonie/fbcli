@@ -81,8 +81,14 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		Scopes:      auth.DefaultScopes(),
 	}
 
+	// Generate CSRF state
+	state, err := auth.GenerateState()
+	if err != nil {
+		return err
+	}
+
 	// Build auth URL and open browser
-	authURL := auth.AuthURL(oauthCfg)
+	authURL := auth.AuthURL(oauthCfg, state)
 	fmt.Printf("\nOpening browser for authentication...\n")
 	fmt.Printf("If browser doesn't open, visit:\n%s\n\n", cyan(authURL))
 
@@ -91,7 +97,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	// Listen for callback
 	ctx := context.Background()
 	fmt.Println("Waiting for authentication...")
-	code, err := auth.ListenForCallback(ctx, port)
+	code, err := auth.ListenForCallback(ctx, port, state)
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}

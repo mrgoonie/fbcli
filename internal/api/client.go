@@ -33,10 +33,38 @@ func (c *Client) PageID() string {
 	return c.pageID
 }
 
+// getString safely extracts a string value from an API result
+func getString(res fb.Result, key string) (string, error) {
+	v, ok := res.Get(key).(string)
+	if !ok || v == "" {
+		return "", fmt.Errorf("unexpected API response: missing or invalid '%s' field", key)
+	}
+	return v, nil
+}
+
+// sensitiveKeys lists parameter names that should be redacted in verbose output
+var sensitiveKeys = map[string]bool{
+	"access_token":  true,
+	"client_secret": true,
+}
+
+// redactParams returns a copy of params with sensitive values masked
+func redactParams(p fb.Params) fb.Params {
+	safe := fb.Params{}
+	for k, v := range p {
+		if sensitiveKeys[k] {
+			safe[k] = "***"
+		} else {
+			safe[k] = v
+		}
+	}
+	return safe
+}
+
 // get performs a GET request to the Graph API
 func (c *Client) get(path string, params fb.Params) (fb.Result, error) {
 	if c.verbose {
-		fmt.Printf("[GET] /%s %v\n", path, params)
+		fmt.Printf("[GET] /%s %v\n", path, redactParams(params))
 	}
 
 	res, err := c.session.Get(path, params)
@@ -45,7 +73,7 @@ func (c *Client) get(path string, params fb.Params) (fb.Result, error) {
 	}
 
 	if c.verbose {
-		fmt.Printf("[RESPONSE] %v\n", res)
+		fmt.Printf("[RESPONSE] /%s OK\n", path)
 	}
 
 	return res, nil
@@ -54,7 +82,7 @@ func (c *Client) get(path string, params fb.Params) (fb.Result, error) {
 // post performs a POST request to the Graph API
 func (c *Client) post(path string, params fb.Params) (fb.Result, error) {
 	if c.verbose {
-		fmt.Printf("[POST] /%s %v\n", path, params)
+		fmt.Printf("[POST] /%s %v\n", path, redactParams(params))
 	}
 
 	res, err := c.session.Post(path, params)
@@ -63,7 +91,7 @@ func (c *Client) post(path string, params fb.Params) (fb.Result, error) {
 	}
 
 	if c.verbose {
-		fmt.Printf("[RESPONSE] %v\n", res)
+		fmt.Printf("[RESPONSE] /%s OK\n", path)
 	}
 
 	return res, nil

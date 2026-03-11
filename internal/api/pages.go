@@ -24,9 +24,17 @@ func (c *Client) ValidateToken() (*PageInfo, error) {
 		return nil, err
 	}
 
+	id, err := getString(res, "id")
+	if err != nil {
+		return nil, fmt.Errorf("validating token: %w", err)
+	}
+	name, err := getString(res, "name")
+	if err != nil {
+		return nil, fmt.Errorf("validating token: %w", err)
+	}
 	return &PageInfo{
-		ID:   res.Get("id").(string),
-		Name: res.Get("name").(string),
+		ID:   id,
+		Name: name,
 	}, nil
 }
 
@@ -39,8 +47,12 @@ func (c *Client) GetPageInfo() (*PageInfo, error) {
 		return nil, err
 	}
 
+	pageID, err := getString(res, "id")
+	if err != nil {
+		return nil, fmt.Errorf("getting page info: %w", err)
+	}
 	info := &PageInfo{
-		ID: res.Get("id").(string),
+		ID: pageID,
 	}
 
 	if name, ok := res["name"].(string); ok {
@@ -61,43 +73,15 @@ func (c *Client) GetPageInfo() (*PageInfo, error) {
 
 // FetchUserPages fetches pages the user manages (using user token, not page token)
 func FetchUserPages(userToken string, verbose bool) ([]PageInfo, error) {
-	app := fb.New("", "")
-	session := app.Session(userToken)
-	session.Version = "v24.0"
-
-	if verbose {
-		fmt.Println("[GET] /me/accounts")
-	}
-
-	res, err := session.Get("/me/accounts", fb.Params{
-		"fields": "id,name,access_token,category",
-	})
+	tokenPages, err := FetchUserPageTokens(userToken, verbose)
 	if err != nil {
-		return nil, wrapFBError(err)
+		return nil, err
 	}
 
-	var response struct {
-		Data []struct {
-			ID          string `facebook:"id"`
-			Name        string `facebook:"name"`
-			AccessToken string `facebook:"access_token"`
-			Category    string `facebook:"category"`
-		} `facebook:"data"`
+	pages := make([]PageInfo, 0, len(tokenPages))
+	for _, p := range tokenPages {
+		pages = append(pages, p.PageInfo)
 	}
-
-	if err := res.Decode(&response); err != nil {
-		return nil, fmt.Errorf("decoding pages: %w", err)
-	}
-
-	pages := make([]PageInfo, 0, len(response.Data))
-	for _, p := range response.Data {
-		pages = append(pages, PageInfo{
-			ID:       p.ID,
-			Name:     p.Name,
-			Category: p.Category,
-		})
-	}
-
 	return pages, nil
 }
 
