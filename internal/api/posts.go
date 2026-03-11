@@ -68,7 +68,10 @@ func (c *Client) CreatePost(message string, opts PostOptions) (*PostResult, erro
 		return nil, err
 	}
 
-	id := res.Get("id").(string)
+	id, err := getString(res, "id")
+	if err != nil {
+		return nil, fmt.Errorf("creating post: %w", err)
+	}
 	return &PostResult{
 		ID:        id,
 		URL:       fmt.Sprintf("https://facebook.com/%s", id),
@@ -154,8 +157,12 @@ func (c *Client) GetPost(postID string) (*PostDetail, error) {
 		return nil, err
 	}
 
+	resolvedID, err := getString(res, "id")
+	if err != nil {
+		return nil, fmt.Errorf("reading post: %w", err)
+	}
 	post := &PostDetail{
-		ID: res.Get("id").(string),
+		ID: resolvedID,
 	}
 
 	if msg, ok := res["message"].(string); ok {

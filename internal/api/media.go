@@ -34,13 +34,6 @@ func (c *Client) UploadPhoto(imagePath, caption string) (string, error) {
 		return "", fmt.Errorf("image too large: %d MB (max: 10 MB)", info.Size()/1024/1024)
 	}
 
-	// Upload via multipart
-	file, err := os.Open(imagePath)
-	if err != nil {
-		return "", fmt.Errorf("opening image: %w", err)
-	}
-	defer file.Close()
-
 	params := fb.Params{
 		"message": caption,
 		"source":  fb.File(imagePath),
@@ -51,7 +44,10 @@ func (c *Client) UploadPhoto(imagePath, caption string) (string, error) {
 		return "", err
 	}
 
-	id := res.Get("id").(string)
+	id, err := getString(res, "id")
+	if err != nil {
+		return "", fmt.Errorf("uploading photo: %w", err)
+	}
 	return id, nil
 }
 
@@ -82,10 +78,16 @@ func (c *Client) UploadVideo(videoPath, caption string) (string, error) {
 		return "", fmt.Errorf("starting video upload: %w", err)
 	}
 
-	uploadSessionID := startRes.Get("upload_session_id").(string)
+	uploadSessionID, err := getString(startRes, "upload_session_id")
+	if err != nil {
+		return "", fmt.Errorf("starting video upload: %w", err)
+	}
 	videoID := startRes.Get("video_id")
+	if videoID == nil {
+		return "", fmt.Errorf("starting video upload: missing 'video_id' in response")
+	}
 
-	// Convert video ID to string
+	// Convert video ID to string (API may return string or number)
 	var videoIDStr string
 	switch v := videoID.(type) {
 	case string:

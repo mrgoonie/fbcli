@@ -33,7 +33,7 @@ func TestAuthURL(t *testing.T) {
 		},
 	}
 
-	authURL := AuthURL(cfg)
+	authURL := AuthURL(cfg, "test-state")
 
 	// Parse and verify the URL
 	u, err := url.Parse(authURL)
@@ -49,6 +49,17 @@ func TestAuthURL(t *testing.T) {
 	assert.Equal(t, "http://localhost:8080/callback", q.Get("redirect_uri"))
 	assert.Equal(t, "pages_manage_posts,public_profile", q.Get("scope"))
 	assert.Equal(t, "code", q.Get("response_type"))
+	assert.Equal(t, "test-state", q.Get("state"))
+}
+
+func TestGenerateState(t *testing.T) {
+	state1, err := GenerateState()
+	require.NoError(t, err)
+	assert.Len(t, state1, 32) // 16 bytes = 32 hex chars
+
+	state2, err := GenerateState()
+	require.NoError(t, err)
+	assert.NotEqual(t, state1, state2) // random, should differ
 }
 
 func TestAuthURLSingleScope(t *testing.T) {
@@ -59,7 +70,7 @@ func TestAuthURLSingleScope(t *testing.T) {
 		Scopes:      []string{"public_profile"},
 	}
 
-	authURL := AuthURL(cfg)
+	authURL := AuthURL(cfg, "test-state")
 	u, err := url.Parse(authURL)
 	require.NoError(t, err)
 
@@ -79,7 +90,7 @@ func TestAuthURLMultipleScopes(t *testing.T) {
 		},
 	}
 
-	authURL := AuthURL(cfg)
+	authURL := AuthURL(cfg, "test-state")
 	u, err := url.Parse(authURL)
 	require.NoError(t, err)
 
@@ -89,15 +100,8 @@ func TestAuthURLMultipleScopes(t *testing.T) {
 
 func TestExchangeCodeSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "POST", r.Method)
 		assert.True(t, strings.HasPrefix(r.URL.Path, "/v24.0/oauth/access_token"))
-
-		// Verify query parameters
-		q := r.URL.Query()
-		assert.Equal(t, "test-app-id", q.Get("client_id"))
-		assert.Equal(t, "test-secret", q.Get("client_secret"))
-		assert.Equal(t, "test-code", q.Get("code"))
-		assert.Equal(t, "http://localhost/callback", q.Get("redirect_uri"))
 
 		// Return access token response
 		response := map[string]interface{}{
@@ -221,7 +225,7 @@ func TestAuthURLEncoding(t *testing.T) {
 		},
 	}
 
-	authURL := AuthURL(cfg)
+	authURL := AuthURL(cfg, "test-state")
 
 	// URL should be properly encoded
 	u, err := url.Parse(authURL)

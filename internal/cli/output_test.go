@@ -43,9 +43,16 @@ func TestTruncateNewlineReplacement(t *testing.T) {
 }
 
 func TestTruncateMinLength(t *testing.T) {
+	// When max < 4, return string as-is to avoid panic on negative slice index
 	result := truncate("test", 3)
-	assert.Equal(t, "...", result)
-	assert.Len(t, result, 3)
+	assert.Equal(t, "test", result)
+
+	result = truncate("test", 0)
+	assert.Equal(t, "test", result)
+
+	// max=4 is the minimum that supports truncation with "..."
+	result = truncate("hello", 4)
+	assert.Equal(t, "h...", result)
 }
 
 func TestTruncateEmpty(t *testing.T) {

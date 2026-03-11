@@ -29,7 +29,8 @@ func RedirectURI(port int) string {
 
 // ListenForCallback starts a local HTTP server and waits for the OAuth callback.
 // Returns the authorization code or an error.
-func ListenForCallback(ctx context.Context, port int) (string, error) {
+// The expectedState parameter is verified against the state returned by Facebook for CSRF protection.
+func ListenForCallback(ctx context.Context, port int, expectedState string) (string, error) {
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 
@@ -40,6 +41,15 @@ func ListenForCallback(ctx context.Context, port int) (string, error) {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "Error: %s", errMsg)
 			errCh <- fmt.Errorf("OAuth error: %s", errMsg)
+			return
+		}
+
+		// Verify CSRF state parameter
+		state := r.URL.Query().Get("state")
+		if state != expectedState {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, "Invalid state parameter")
+			errCh <- fmt.Errorf("OAuth CSRF state mismatch")
 			return
 		}
 
@@ -56,20 +66,10 @@ func ListenForCallback(ctx context.Context, port int) (string, error) {
 		codeCh <- code
 	})
 
-	// Find available port
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	// Bind to localhost only for security
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		// Try next ports
-		for p := port + 1; p <= port+10; p++ {
-			listener, err = net.Listen("tcp", fmt.Sprintf(":%d", p))
-			if err == nil {
-				port = p
-				break
-			}
-		}
-		if err != nil {
-			return "", fmt.Errorf("no available port found near %d: %w", defaultPort, err)
-		}
+		return "", fmt.Errorf("port %d is busy. Close other services or try again: %w", port, err)
 	}
 
 	server := &http.Server{Handler: mux}

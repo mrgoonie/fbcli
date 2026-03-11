@@ -2,11 +2,14 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // OAuthConfig holds Facebook OAuth configuration
@@ -27,8 +30,17 @@ func DefaultScopes() []string {
 	}
 }
 
-// AuthURL builds the Facebook OAuth authorization URL
-func AuthURL(cfg OAuthConfig) string {
+// GenerateState creates a random state parameter for CSRF protection
+func GenerateState() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generating state: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// AuthURL builds the Facebook OAuth authorization URL with CSRF state parameter
+func AuthURL(cfg OAuthConfig, state string) string {
 	scopes := ""
 	for i, s := range cfg.Scopes {
 		if i > 0 {
@@ -38,10 +50,11 @@ func AuthURL(cfg OAuthConfig) string {
 	}
 
 	params := url.Values{
-		"client_id":    {cfg.AppID},
-		"redirect_uri": {cfg.RedirectURI},
-		"scope":        {scopes},
+		"client_id":     {cfg.AppID},
+		"redirect_uri":  {cfg.RedirectURI},
+		"scope":         {scopes},
 		"response_type": {"code"},
+		"state":         {state},
 	}
 
 	return "https://www.facebook.com/v24.0/dialog/oauth?" + params.Encode()
@@ -56,11 +69,12 @@ func ExchangeCode(ctx context.Context, cfg OAuthConfig, code string) (string, er
 		"code":          {code},
 	}
 
-	reqURL := "https://graph.facebook.com/v24.0/oauth/access_token?" + params.Encode()
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://graph.facebook.com/v24.0/oauth/access_token",
+		strings.NewReader(params.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -68,7 +82,14 @@ func ExchangeCode(ctx context.Context, cfg OAuthConfig, code string) (string, er
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("reading token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("token exchange failed (HTTP %d): %s", resp.StatusCode, string(body))
+	}
 
 	var result struct {
 		AccessToken string `json:"access_token"`
@@ -97,11 +118,12 @@ func ExtendToken(ctx context.Context, cfg OAuthConfig, shortToken string) (strin
 		"fb_exchange_token": {shortToken},
 	}
 
-	reqURL := "https://graph.facebook.com/v24.0/oauth/access_token?" + params.Encode()
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://graph.facebook.com/v24.0/oauth/access_token",
+		strings.NewReader(params.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -109,7 +131,14 @@ func ExtendToken(ctx context.Context, cfg OAuthConfig, shortToken string) (strin
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("reading token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("token extension failed (HTTP %d): %s", resp.StatusCode, string(body))
+	}
 
 	var result struct {
 		AccessToken string `json:"access_token"`

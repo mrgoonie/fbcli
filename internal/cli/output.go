@@ -43,7 +43,7 @@ func printJSON(v interface{}) {
 // truncate shortens a string to max length with ellipsis
 func truncate(s string, max int) string {
 	s = strings.ReplaceAll(s, "\n", " ")
-	if len(s) <= max {
+	if max < 4 || len(s) <= max {
 		return s
 	}
 	return s[:max-3] + "..."

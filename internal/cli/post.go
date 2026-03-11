@@ -47,7 +47,7 @@ func runPost(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		message = args[0]
 	} else if !term.IsTerminal(int(os.Stdin.Fd())) {
-		data, err := io.ReadAll(os.Stdin)
+		data, err := io.ReadAll(io.LimitReader(os.Stdin, 64*1024)) // 64KB max
 		if err != nil {
 			return fmt.Errorf("reading stdin: %w", err)
 		}
