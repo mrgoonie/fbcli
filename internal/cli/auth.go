@@ -40,10 +40,26 @@ var logoutCmd = &cobra.Command{
 	RunE:  runLogout,
 }
 
+var tokenCmd = &cobra.Command{
+	Use:   "token [PAGE_ACCESS_TOKEN]",
+	Short: "Set a Page Access Token manually (skip OAuth flow)",
+	Long: `Manually set a Page Access Token without going through OAuth.
+
+Useful when:
+  - Facebook App domain settings prevent localhost OAuth
+  - You already have a Page Access Token from Graph API Explorer
+  - Running in environments where browser login isn't possible
+
+Get a token from: https://developers.facebook.com/tools/explorer/`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runToken,
+}
+
 func init() {
 	authCmd.AddCommand(loginCmd)
 	authCmd.AddCommand(statusCmd)
 	authCmd.AddCommand(logoutCmd)
+	authCmd.AddCommand(tokenCmd)
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
@@ -214,6 +230,100 @@ func runLogout(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printSuccess("Logged out")
+	return nil
+}
+
+func runToken(cmd *cobra.Command, args []string) error {
+	var token string
+
+	if len(args) == 1 {
+		token = strings.TrimSpace(args[0])
+	} else {
+		// Read from stdin (supports piping or interactive input)
+		fmt.Print("Paste your Page Access Token: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		token = strings.TrimSpace(input)
+	}
+
+	if token == "" {
+		return fmt.Errorf("token cannot be empty")
+	}
+
+	// Validate token by fetching page info
+	fmt.Println("Validating token...")
+	pages, err := api.FetchUserPageTokens(token, isVerbose())
+	if err != nil {
+		// Token might be a Page token directly (not a User token)
+		// Try using it as a page token with "me" endpoint
+		client := api.NewClient(token, "me", isVerbose())
+		info, verr := client.ValidateToken()
+		if verr != nil {
+			return fmt.Errorf("invalid token: %w", err)
+		}
+
+		// It's a valid page token
+		ts := &store.TokenStore{
+			PageToken: token,
+			PageID:    info.ID,
+			PageName:  info.Name,
+		}
+		if err := store.Save(ts); err != nil {
+			return fmt.Errorf("saving tokens: %w", err)
+		}
+
+		cfg, _ := config.Load()
+		if cfg != nil {
+			cfg.DefaultPageID = info.ID
+			cfg.DefaultPageName = info.Name
+			config.Save(cfg)
+		}
+
+		printSuccess(fmt.Sprintf("Token saved for page: %s", bold(info.Name)))
+		return nil
+	}
+
+	if len(pages) == 0 {
+		return fmt.Errorf("no Facebook Pages found for this token")
+	}
+
+	// Select page
+	var selected api.PageTokenInfo
+	if len(pages) == 1 {
+		selected = pages[0]
+		fmt.Printf("Found page: %s\n", bold(selected.Name))
+	} else {
+		fmt.Println("\nYour pages:")
+		for i, p := range pages {
+			fmt.Printf("  %d. %s (%s)\n", i+1, p.Name, p.Category)
+		}
+		fmt.Print("\nSelect page number: ")
+		var choice int
+		fmt.Scanln(&choice)
+		if choice < 1 || choice > len(pages) {
+			return fmt.Errorf("invalid selection")
+		}
+		selected = pages[choice-1]
+	}
+
+	ts := &store.TokenStore{
+		PageToken: selected.AccessToken,
+		UserToken: token,
+		PageID:    selected.ID,
+		PageName:  selected.Name,
+	}
+	if err := store.Save(ts); err != nil {
+		return fmt.Errorf("saving tokens: %w", err)
+	}
+
+	cfg, _ := config.Load()
+	if cfg != nil {
+		cfg.DefaultPageID = selected.ID
+		cfg.DefaultPageName = selected.Name
+		config.Save(cfg)
+	}
+
+	printSuccess(fmt.Sprintf("Token saved for page: %s", bold(selected.Name)))
 	return nil
 }
 

@@ -24,29 +24,42 @@ make build
 
 ### 1. Create a Facebook App
 
-1. Go to [Meta Developers](https://developers.facebook.com/)
-2. Create a new app (type: **Business**)
-3. Note your **App ID** and **App Secret**
-4. Add **Facebook Login** product
-5. Set redirect URI to `http://localhost:8910/callback`
-6. Required permissions: `pages_manage_posts`, `pages_read_engagement`, `pages_show_list`
+1. Go to [Meta Developers](https://developers.facebook.com/) and create a new app (type: **Business**)
+2. Go to **Use Cases** → **Add use case** → select **"Manage Everything on your Page"**
+3. Click **Customize** → find `pages_manage_posts` in the "Permissions & features" column → click **Add**
 
-### 2. Authenticate
+> No redirect URI setup needed — development mode works with localhost automatically.
+
+### 2. Get a Page Token
+
+1. Open [Graph API Explorer](https://developers.facebook.com/tools/explorer/)
+2. Select your app from the **Meta App** dropdown
+3. Under **Permissions**, add: `pages_manage_posts`, `pages_read_engagement`, `pages_show_list`
+4. Change **User or Page** to your Facebook Page (not "User Token")
+5. Click **Generate Access Token** and approve the permissions
+6. Copy the generated token
+
+### 3. Authenticate
 
 ```bash
-fbcli auth login
+fbcli auth token "<your-page-token>"
 ```
 
-This will:
-- Prompt for App ID and App Secret (first time only)
-- Open your browser for Facebook OAuth
-- Store your Page Access Token locally at `~/.fbcli/`
-
-### 3. Verify
+### 4. Verify
 
 ```bash
+# Check auth status
 fbcli auth status
+
+# List recent posts
+fbcli list
+
+# Try posting
+fbcli post "Hello from the terminal!" --verbose
 ```
+
+> **Alternative:** You can also use `fbcli auth login` for browser-based OAuth flow.
+> This requires configuring a redirect URI (`http://localhost:8910/callback`) in your app's Facebook Login settings.
 
 ## Usage
 
@@ -120,7 +133,8 @@ export FBCLI_APP_SECRET="your-app-secret"
 
 | Command | Description |
 |---------|-------------|
-| `fbcli auth login` | Authenticate with Facebook |
+| `fbcli auth token` | Set a Page Access Token manually |
+| `fbcli auth login` | Authenticate via browser OAuth flow |
 | `fbcli auth status` | Show authentication status |
 | `fbcli auth logout` | Clear stored tokens |
 | `fbcli post` | Create a new post |
